@@ -49,10 +49,16 @@
 **12. Top 3 highest-grossing films per category.**
 - *Solution*: Built a chain of two CTEs. First CTE calculated total revenue per film per category. Second CTE ranked them using `RANK() OVER(PARTITION BY category_name)`. Main query filtered for `rank <= 3`.
 
-## :star: Bonus Challenge Solution
+## Bonus Challenge Solution
 **Which staff member processed the highest revenue in each store, and what percentage of that store's total revenue did they contribute?**
 - *Solution*: 
     1. First CTE (`StaffRevenue`): Calculated total revenue processed by each staff member.
     2. Second CTE (`StoreRevenue`): Calculated the overall total revenue for each store.
     3. Third CTE (`RankedStaff`): Joined the first two CTEs together to calculate the percentage (`(total_processed / store_total) * 100`). Applied `RANK() OVER(PARTITION BY store_id)` to rank the staff members.
     4. Main Query: Filtered for `rank = 1` to get the top performer per store.
+
+## Business Insights
+
+1. **Inventory & Category Optimization**: By identifying the highest-grossing films per category and analyzing average rental durations, management can optimize physical inventory—stocking more copies of high-grossing, fast-turnaround films to maximize availability and total revenue.
+2. **Staff Performance & Incentive Alignment**: Tracking which staff members process the highest percentage of their store's total revenue (as seen in the Bonus Challenge) allows management to identify top performers. These insights can be used to develop targeted training programs or structure performance-based commission incentives.
+3. **Hyper-Localized VIP Marketing**: Ranking customers by total spend within specific cities (and identifying above-average spenders) enables the marketing team to roll out highly targeted VIP loyalty programs or localized promotions in cities with dense clusters of high-value customers.
