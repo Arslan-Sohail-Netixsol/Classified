@@ -49,7 +49,4 @@ Evaluated on the completely untouched 20% test split, the production pipeline ac
 - **Brier Score Loss:** 0.089
 - **Max F1-Score:** 0.71
 
-## 6. Deliverable Artifacts
-The entire modeling workflow has been saved and documented.
-1. **Notebooks:** `01` through `05` detailing reproducible setups, hyperparameter tuning, diagnostics, calibration, and final evaluation.
-2. **Model Artifact:** The fully fitted, calibration-wrapped pipeline is saved as `final_adult_income_pipeline.joblib`. This artifact expects raw data input and handles all preprocessing internally for immediate production inference.
+
