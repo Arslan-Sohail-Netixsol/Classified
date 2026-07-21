@@ -1,0 +1,5 @@
+{
+  "alice": {"age": 28, "department": "Engineering", "role": "Backend Developer"},
+  "bob": {"age": 34, "department": "Sales", "role": "Account Executive"},
+  "charlie": {"age": 41, "department": "Marketing", "role": "Director"}
+}
