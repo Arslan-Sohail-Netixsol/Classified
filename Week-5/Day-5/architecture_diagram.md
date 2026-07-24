@@ -7,29 +7,7 @@
 
 ## Architecture Diagram
 
-```mermaid
-graph TD
-    classDef state fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef node fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef human fill:#fbb,stroke:#333,stroke-width:2px;
-    
-    START((START)) --> A
-    
-    A[Classify Ticket Node]:::node --> |Technical| B[Technical Solver Node\\nTool: KB Search]:::node
-    A --> |Billing| C[Billing Handler Node]:::node
-    A --> |General| D[General Responder Node]:::node
-    
-    B --> E[Human Review Checkpoint]:::human
-    C --> E
-    D --> E
-    
-    E --> |Approved| F[Dispatch Response Node]:::node
-    E --> |Rejected/Revise| A
-    
-    F --> END((END))
-```
-
----
+another file of png attached 
 
 ## Framework Choice & Justification
 
