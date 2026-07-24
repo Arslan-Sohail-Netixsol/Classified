@@ -21,30 +21,34 @@ class TicketState(TypedDict):
     status: str          # "Pending", "Approved", "Rejected", "Error"
     error_message: str
 
+import re
+import requests
+
 # 2. Tool Definition (External Data Source)
-
-
 def search_kb_tool(query: str) -> str:
-    """Simulates searching a local JSON database."""
+    """Queries Wikipedia API for real external data."""
     if "timeout" in query.lower():
-        raise TimeoutError("KB search timed out after 5000ms.")
-    if "corrupt" in query.lower():
-        raise FileNotFoundError(
-            "knowledge_base.json not found or inaccessible.")
-
+        raise TimeoutError("Simulated KB search timeout.")
+        
     try:
-        with open("knowledge_base.json", "r") as f:
-            kb = json.load(f)
+        url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&utf8=&format=json"
+        headers = {"User-Agent": "SupportTriageAgent/1.0 (test@example.com)"}
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        data = response.json()
+        search_results = data.get("query", {}).get("search", [])
+        
+        if search_results:
+            raw_snippet = search_results[0].get("snippet", "")
+            # Clean HTML tags from Wikipedia snippet
+            clean_snippet = re.sub('<[^<]+>', '', raw_snippet)
+            return clean_snippet
+            
+        return "No relevant KB article found."
     except Exception as e:
         raise RuntimeError(f"Database error: {e}")
 
-    # Simple keyword match
-    for key, value in kb.items():
-        # key might be "password_reset". Check if any part of the key is in the query.
-        for word in key.split("_"):
-            if word in query.lower():
-                return value
-    return "No relevant KB article found."
 
 # 3. Nodes
 
