@@ -6,8 +6,8 @@ Using LangGraph with checkpointer, failure handling, and a local tool.
 import json
 import uuid
 from typing import TypedDict
-from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph, START, END  # type: ignore
+from langgraph.checkpoint.memory import MemorySaver  # type: ignore
 
 # 1. State Schema
 

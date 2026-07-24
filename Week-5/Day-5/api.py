@@ -7,8 +7,8 @@ import sys
 import time
 import uuid
 import logging
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException  # type: ignore
+from pydantic import BaseModel  # type: ignore
 
 # Ensure the local directory is in the path to suppress Pylance unresolved import warnings
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
