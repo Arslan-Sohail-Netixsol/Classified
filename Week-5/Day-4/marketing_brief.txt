@@ -1,0 +1,19 @@
+HEADLINE
+"The AI Platform That Works As Hard As Your Team Does"
+
+HOOK
+Enterprise AI shouldn't require a PhD in prompt engineering or a dedicated safety committee.
+While Anthropic explains Constitutional AI to regulators, your team needs tools that ship
+features, close deals, and integrate with the stack you already use — on Monday morning.
+
+VALUE PROPOSITION
+• Deep Integrations Out of the Box — Salesforce, Slack, Jira, and 40+ enterprise tools
+  connected in under an hour. No custom APIs. No professional services.
+• Operational Reliability You Can Audit — 99.9% uptime SLA, full audit logs, and
+  GDPR/SOC-2 compliance. Safety your legal team can actually verify.
+• Transparent Pricing for Every Team — From 5-person startups to 50,000-employee
+  enterprises. No opaque 'contact sales' tiers. Know your costs before you commit.
+
+CALL TO ACTION
+Start your free 14-day trial at platform.ai/trial.
+No credit card. Full feature access. First 1M tokens on us.
