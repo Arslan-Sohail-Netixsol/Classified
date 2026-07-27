@@ -1,5 +1,0 @@
-{
-  "password_reset": "To reset your password, visit https://example.com/reset. You will receive an email with a 6-digit code. Enter the code to choose a new password.",
-  "api_rate_limit": "Our standard API rate limit is 100 requests per minute. If you are receiving 429 Too Many Requests errors, please implement exponential backoff. For higher limits, contact sales.",
-  "2fa_locked": "If you are locked out of your 2FA app, you can use one of the backup recovery codes provided during setup. If you lost those, please submit an identity verification form."
-}
