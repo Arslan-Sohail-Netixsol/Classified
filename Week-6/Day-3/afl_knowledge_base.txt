@@ -1,0 +1,27 @@
+# AFL Unstructured Knowledge Base & Match Commentary
+
+## Section 1: AFL Scoring Rules & Terms
+In Australian Rules Football (AFL), scoring is done via goals and behinds. 
+A goal is scored when the football is kicked between the two tall middle posts without touching another player. A goal is worth 6 points.
+A behind is scored when the ball passes between a tall goal post and a shorter behind post, or if the ball hits a goal post, or is carried/carried over the line. A behind is worth 1 point.
+The total score is calculated as: `Total = (6 * Goals) + Behind`. For example, a score of 12.10 means 12 goals and 10 behinds, totaling 82 points.
+
+## Section 2: Holding the Ball Rule
+Holding the Ball is one of the most debated rules in the AFL. 
+If a player has had "prior opportunity" (time to kick or handball, such as dodging, fending off, or running) before being legally tackled, they must immediately dispose of the football via a kick or handball. Failing to do so results in a free kick to the tackler.
+If a player has not had a prior opportunity when tackled, they must make a genuine attempt to dispose of the ball. If they make a genuine attempt, play is stopped and a ball-up is called.
+If a player drops or throws the ball illegally while being tackled, it is penalized as incorrect disposal.
+
+## Section 3: Geelong Cats & Kardinia Park Fortress
+The Geelong Cats (founded in 1859) are one of the oldest clubs in the league. Their home ground is Kardinia Park (currently known as GMHBA Stadium), located in Geelong.
+Kardinia Park is famously known as a "fortress" because of its narrow dimensions and intense home crowd support, making it structurally one of the hardest venues for visiting teams to win at. Geelong's home win rate at this venue has historically exceeded 75%.
+
+## Section 4: Richmond Tigers History
+The Richmond Football Club (Tigers) was established in 1885. They are famous for their passionate fan base and their traditional yellow and black sash guernsey.
+Richmond has won 13 premierships, with their most recent golden era occurring under coach Damien Hardwick, winning three flags in 2017, 2019, and 2020. Their home ground is the Melbourne Cricket Ground (MCG), shared with several other Melbourne-based clubs.
+
+## Section 5: The Composite Performance Index (CPI)
+The Composite Performance Index (CPI) is a custom performance metric used to evaluate a player's overall game impact. 
+It combines both offensive and defensive actions using the formula:
+`CPI = 3.0*goals + 1.5*clearances + 2.0*tackles + 1.0*disposals + 1.5*marks + 1.0*inside_50 - 0.5*clangers - 0.5*frees_against`
+A CPI score above 45.0 represents an elite performance, placing a player in the top 10% of the league for that season.

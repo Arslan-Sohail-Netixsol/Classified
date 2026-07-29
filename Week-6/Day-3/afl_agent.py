@@ -47,7 +47,7 @@ class GeminiChatModel(BaseChatModel):
     Using gemini-flash-latest since it is supported on the provided key.
     """
     api_key: str
-    model_name: str = "gemini-flash-latest"
+    model_name: str = "gemini-3.5-flash-lite"
     temperature: float = 0.0
 
     @property
@@ -75,6 +75,13 @@ class GeminiChatModel(BaseChatModel):
             elif m.type == "ai":
                 # For basic QA history, we append past AI messages too
                 contents.append(m.content)
+
+        if not contents:
+            if system_instruction:
+                contents.append(system_instruction.strip())
+                system_instruction = ""
+            else:
+                contents.append("Hi")
 
         # Build execution config
         config = {
