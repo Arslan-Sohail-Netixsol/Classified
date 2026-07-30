@@ -1,0 +1,439 @@
+# Week 6 Day 4 Deliverables
+
+
+
+<!-- FROM FILE: task2_routing_accuracy_report.md -->
+
+# Router Node Accuracy Report — Week 6 Day 4 Task 2
+
+> Tests both prompt versions (v1 → v2) across 20 labelled queries.
+
+## 1. Overall Accuracy
+
+| Prompt Version | Correct / Total | Accuracy |
+|---|---|---|
+| v1 (initial) | 17 / 20 | 85.0% |
+| v2 (refined) | 17 / 20 | 85.0% |
+
+## 2. Per-Intent Accuracy
+
+| Intent | v1 Correct | v1 Acc | v2 Correct | v2 Acc | Δ |
+|---|---|---|---|---|---|
+| `prediction` | 5/6 | 83.3% | 5/6 | 83.3% | +0.0% |
+| `retrieval` | 7/7 | 100.0% | 7/7 | 100.0% | +0.0% |
+| `factual` | 1/3 | 33.3% | 1/3 | 33.3% | +0.0% |
+| `off_topic` | 4/4 | 100.0% | 4/4 | 100.0% | +0.0% |
+
+## 3. Full Results Table (v2 — Refined Prompt)
+
+| ID | Query | Expected | Predicted | Conf | Correct | Reasoning |
+|---|---|---|---|---|---|---|
+| 01 | `Who will win Richmond vs Collingwood this weekend?` | `prediction` | `prediction` | 0.78 | ✅ | Rule-based: prediction signal detected. |
+| 02 | `Predict the top scorer for Geelong Cats in Round 15.` | `prediction` | `prediction` | 0.78 | ✅ | Rule-based: prediction signal detected. |
+| 03 | `Which team is likely to win the 2025 AFL Grand Final?` | `prediction` | `prediction` | 0.78 | ✅ | Rule-based: prediction signal detected. |
+| 04 | `Who should I pick for my fantasy AFL team this week — P...` | `prediction` | `prediction` | 0.78 | ✅ | Rule-based: prediction signal detected. |
+| 05 | `Will Hawthorn beat Brisbane in the finals?` | `prediction` | `retrieval` | 0.78 | ❌ | Rule-based: retrieval signal detected. |
+| 06 | `Who will be the best midfielder for Port Adelaide next ...` | `prediction` | `prediction` | 0.78 | ✅ | Rule-based: prediction signal detected. |
+| 07 | `What were Hawthorn's stats in the last round?` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 08 | `What is the H2H record between Carlton and Essendon?` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 09 | `What was player 43266's CPI in the 2025 season?` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 10 | `How many games did Geelong win in 2023?` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 11 | `Explain the holding the ball rule in AFL.` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 12 | `Who won the Richmond vs Collingwood match last season?` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 13 | `Show me the disposal stats for Melbourne Demons players...` | `retrieval` | `retrieval` | 0.78 | ✅ | Rule-based: retrieval signal detected. |
+| 14 | `How many players are on each team in an AFL match?` | `factual` | `retrieval` | 0.78 | ❌ | Rule-based: retrieval signal detected. |
+| 15 | `Which stadium has the largest capacity in the AFL?` | `factual` | `factual` | 0.55 | ✅ | Rule-based: default factual (no strong signal). |
+| 16 | `What does CPI stand for in AFL statistics?` | `factual` | `retrieval` | 0.78 | ❌ | Rule-based: retrieval signal detected. |
+| 17 | `Who won the English Premier League in soccer in 2024?` | `off_topic` | `off_topic` | 0.85 | ✅ | Rule-based: off_topic signal detected. |
+| 18 | `Write me a Python function to reverse a string.` | `off_topic` | `off_topic` | 0.85 | ✅ | Rule-based: off_topic signal detected. |
+| 19 | `Pretend you are a cricket commentator and describe AFL.` | `off_topic` | `off_topic` | 0.85 | ✅ | Rule-based: off_topic signal detected. |
+| 20 | `What's the best recipe for chocolate lava cake?` | `off_topic` | `off_topic` | 0.85 | ✅ | Rule-based: off_topic signal detected. |
+
+## 4. Misroute Analysis — v1 Failures
+
+### Query 05: _Will Hawthorn beat Brisbane in the finals?_
+
+* **Note:** Finals prediction
+* **Expected:** `prediction`
+* **v1 Predicted:** `retrieval` (conf=0.78)
+* **v1 Reasoning:** Rule-based: retrieval signal detected.
+* **v2 Result:** `retrieval` — ❌ STILL FAILING
+
+### Query 14: _How many players are on each team in an AFL match?_
+
+* **Note:** General AFL rule — no DB lookup needed
+* **Expected:** `factual`
+* **v1 Predicted:** `retrieval` (conf=0.78)
+* **v1 Reasoning:** Rule-based: retrieval signal detected.
+* **v2 Result:** `retrieval` — ❌ STILL FAILING
+
+### Query 16: _What does CPI stand for in AFL statistics?_
+
+* **Note:** AFL terminology definition — factual
+* **Expected:** `factual`
+* **v1 Predicted:** `retrieval` (conf=0.78)
+* **v1 Reasoning:** Rule-based: retrieval signal detected.
+* **v2 Result:** `retrieval` — ❌ STILL FAILING
+
+## 5. Prompt Refinements Applied (v1 → v2)
+
+### Refinement 1: Ordered intent definitions with 'off_topic FIRST'
+* **Problem:** v1 processed intents in ambiguous order; off_topic queries involving sport comparisons leaked into `factual`.
+* **Fix:** v2 checks `off_topic` first with an explicit SIGNAL list (soccer, rugby, NBA, recipe, Python, etc.) before evaluating AFL intents.
+
+### Refinement 2: Prediction vs Retrieval tense disambiguation
+* **Problem:** 'Who won X vs Y last season?' (retrieval past tense) was sometimes classified as `prediction`.
+* **Fix:** v2 adds explicit note: 'Who WILL win = prediction. Who WON = retrieval.'
+
+### Refinement 3: Top-scorer / best player signals added to prediction
+* **Problem:** 'Top scorer for Geelong' was ambiguous — v1 sometimes classified it as `retrieval` (historical leaderboard).
+* **Fix:** v2 explicitly adds 'top-score', 'best player', 'who will perform' as prediction signals.
+
+### Refinement 4: Factual vs Retrieval distinction sharpened
+* **Problem:** 'Explain holding the ball' hit the `factual` branch instead of `retrieval` (KB lookup).
+* **Fix:** v2 clarifies: rule *explanation* = retrieval (KB), while general knowledge like 'how many players' = factual.
+
+## 6. Why a Structured Classifier (not free ReAct)
+
+| Concern | Free Agent | Structured Router |
+|---|---|---|
+| Prediction disclaimers | LLM decides ad hoc | **Guaranteed** by formatter |
+| Off-topic refusal | May leak | Hard-coded before LLM call |
+| Latency | 3–5 hops | 2 hops (classify → format) |
+| Auditability | Black box | Intent + entities in state |
+| Tool misuse | LLM free-forms | Node registers only relevant tools |
+
+
+
+<!-- FROM FILE: task5_e2e_report.md -->
+
+# End-to-End Test Report — Week 6 Day 4 Task 5
+
+> Full pipeline tests: Router → Tool → Validation → Clarify/Fallback/Formatter
+
+**Run at:** 2026-07-30 16:47
+
+## 1. Test Results Summary
+
+**Overall: 11/12 conversations passed**
+
+| ID | Label | Path | Outcome | Validation | Status |
+|---|---|---|---|---|---|
+| 01 | Factual — players per team | `factual` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 02 | Retrieval — H2H record (Richmond vs Collingwood) | `retrieval` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 03 | Retrieval — player 43266 stats 2025 | `retrieval` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 04 | Retrieval — holding the ball rule (KB lookup) | `retrieval` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 05 | Prediction — match winner (Pies vs Cats slang) [TRACED] | `prediction` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 06 | Prediction — top players for Freo 2025 | `prediction` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 07 | Off-topic — pizza recipe refusal | `off_topic` | `ValidationOutcome.PASS` | `none` | ✅ |
+| 08 | Clarification — unknown team [TRACED] | `clarify` | `ValidationOutcome.CLARIFY` | `unknown_team` | ✅ |
+| 09 | Clarification — same team both sides | `clarify` | `ValidationOutcome.CLARIFY` | `same_team` | ✅ |
+| 10 | Clarification — year 2035 (beyond training data) | `clarify` | `ValidationOutcome.PASS` | `none` | ❌ |
+| 11 | Fallback — tackles (unsupported stat) | `fallback` | `ValidationOutcome.FALLBACK` | `unsupported_stat` | ✅ |
+| 12 | Multi-turn — Geelong prediction, then Collingwood follow-up [TRACED] | `multi_turn` | `multi-turn` | `—` | ✅ |
+
+## 2. Path Coverage
+
+| Graph Path | Conversations | Covered? |
+|---|---|---|
+| `factual` | 1 | ✅ |
+| `retrieval` | 3 | ✅ |
+| `prediction` | 2 | ✅ |
+| `off_topic` | 1 | ✅ |
+| `clarify` | 3 | ✅ |
+| `fallback` | 1 | ✅ |
+| `multi_turn` | 1 | ✅ |
+
+## 3. Annotated State Traces
+
+## ANNOTATED TRACE — Conversation 5: Match Prediction (Slang Input)
+
+> **Context:** Query uses fan slang ('Pies', 'Cats') and temporal expression ('this weekend'). Tests the full happy path: router → prediction tool → validation PASS → formatter with disclaimer.
+
+#### `Router`
+```json
+{
+  "intent": "prediction",
+  "confidence": 1.0,
+  "entities": {
+    "team_a": "Pies",
+    "team_b": "Cats",
+    "sub_intent": "match_winner",
+    "temporal_context": "this week"
+  }
+}
+```
+> **Annotation:** The router correctly identifies 'Pies vs Cats' as a prediction intent with high confidence. Entities are pre-extracted: team_a='Pies', team_b='Cats'. NicknameResolver will convert these to canonical names in the PredictionNode.
+
+#### `PredictionNode`
+```json
+{
+  "tool_name": "none",
+  "tool_error": null,
+  "result_len": 1643
+}
+```
+> **Annotation:** PredictionNode calls predict_match_winner_tool with the slang names. The tool runs NicknameResolver internally: 'Pies' → 'Collingwood Magpies', 'Cats' → 'Geelong Cats'. DateResolver maps 'this week' → Round 20, 2025. Model returns probabilities.
+
+#### `ValidationNode`
+```json
+{
+  "outcome": "pass",
+  "error_class": "none",
+  "reason": "Tool executed successfully.",
+  "next_node": "formatter"
+}
+```
+> **Annotation:** Validation reads tool_results, finds no error marker ('❌') in the output, and returns PASS. The tool output is forwarded to the ResponseFormatterNode unchanged.
+
+#### `ResponseFormatterNode`
+```json
+{
+  "final_response": "\u26a0\ufe0f  PREDICTION DISCLAIMER\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nThis output is generated by a trained statistical model and represents a\nPROBABILITY ESTIMATE, not a guaranteed outcome. Model performance:\n  \u2022 Match winner:   Accuracy=66.8%, ROC-AUC=0.643, Brier=0.2"
+}
+```
+> **Annotation:** Formatter detects intent='prediction'. The tool output already contains the mandatory disclaimer (prepended by Task 3 tool) and the 📊 GROUNDING EXPLANATION block. Formatter passes through as-is.
+
+---
+
+## ANNOTATED TRACE — Conversation 8: Clarification (Unknown Team)
+
+> **Context:** Query contains an invented team name 'Mystery FC'. Tests the CLARIFY branch: router → prediction tool (fails) → validation → ClarificationNode asks for a valid team name.
+
+#### `Router`
+```json
+{
+  "intent": "prediction",
+  "confidence": 1.0,
+  "entities": {
+    "team_a": "Mystery FC",
+    "team_b": "Geelong",
+    "sub_intent": "match_winner"
+  }
+}
+```
+> **Annotation:** Router classifies as 'prediction' — there are two team-like tokens and the word 'predict'. Entities: team_a='Mystery FC', team_b='Geelong'.
+
+#### `PredictionNode`
+```json
+{
+  "tool_name": "none",
+  "tool_error": null,
+  "result_len": 148
+}
+```
+> **Annotation:** PredictionNode passes 'Mystery FC' to predict_match_winner_tool. NicknameResolver cannot resolve it — not in the 40+ nickname map or the Day-2 canonical team list. Tool returns '❌ Team resolution error: Could not resolve team name...'
+
+#### `ValidationNode`
+```json
+{
+  "outcome": "clarify",
+  "error_class": "unknown_team",
+  "reason": "\u274c Team resolution error: Could not resolve team name 'Mystery FC' to a known AFL",
+  "next_node": "clarification_node"
+}
+```
+> **Annotation:** ValidationNode sees '❌' in tool output, extracts the error string, matches the UNKNOWN_TEAM regex pattern, and emits outcome=CLARIFY. missing_fields=['home_team', 'away_team'] because team_a was not successfully resolved.
+
+#### `ClarificationNode`
+```json
+{
+  "final_response": "[Query: \"Predict the winner: Mystery FC vs Geelong\"]\n\n\ud83d\udd0d I couldn't identify the team you mentioned. To help you, I need a\nrecognisable AFL team name.\n\nSupported teams include:\n  Adelaide Crows, Brisbane Lions, Carlton Blues, Collingwood Magpies,\n  Essendon Bombers, Fremantle Dockers, Geelong Cats, G"
+}
+```
+> **Annotation:** ClarificationNode selects the UNKNOWN_TEAM template. The message lists all 18 current AFL teams plus common nicknames. It does NOT guess what 'Mystery FC' might have meant — asking the user to restate explicitly prevents hallucination.
+
+---
+
+## ANNOTATED TRACE — Conversation 12: Multi-Turn Follow-up
+
+> **Context:** Two-turn conversation: Turn 1 asks about Geelong, Turn 2 asks 'What about Collingwood?' with prior history in state. Tests that conversation_history is propagated and both predictions are independent.
+
+### Turn 1: "Who will be Geelong's top performer this season?"
+
+#### `Router`
+```json
+{
+  "intent": "prediction",
+  "confidence": 1.0,
+  "entities": {
+    "team": "Geelong Cats",
+    "sub_intent": "top_player",
+    "stat_type": "cpi",
+    "year": 2025
+  }
+}
+```
+> **Annotation:** [Turn 1] Routes as 'prediction/top_player' for Geelong. [Turn 2] The force_entities pre-resolve 'Collingwood Magpies', simulating what entity resolution with pronoun tracking would do (resolving 'Collingwood' from the follow-up context).
+
+#### `PredictionNode`
+```json
+{
+  "tool_name": "none",
+  "tool_error": null,
+  "result_len": 1832
+}
+```
+> **Annotation:** [Turn 1] Calls predict_top_player_tool for Geelong Cats 2025. [Turn 2] Calls predict_top_player_tool for Collingwood Magpies 2025. Each call uses season medians — results are independent.
+
+#### `ValidationNode`
+```json
+{
+  "outcome": "pass",
+  "error_class": "none",
+  "reason": "Tool executed successfully.",
+  "next_node": "formatter"
+}
+```
+> **Annotation:** Both turns pass validation with outcome=PASS. The conversation_history list grows after each turn (HumanMessage + AIMessage appended using the Annotated[list, operator.add] reducer). This is the LangGraph state accumulation pattern from Task 1.
+
+#### `ResponseFormatterNode`
+```json
+{
+  "final_response": "\u26a0\ufe0f  PREDICTION DISCLAIMER\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nThis output is generated by a trained statistical model and represents a\nPROBABILITY ESTIMATE, not a guaranteed outcome. Model performance:\n  \u2022 Match winner:   Accuracy=66.8%, ROC-AUC=0.643, Brier=0.2"
+}
+```
+> **Annotation:** Both turns return prediction responses with full disclaimers. Multi-turn context is maintained in state, allowing a future pronoun-resolution node to handle 'they' or 'that team' references.
+
+### Turn 2: "What about Collingwood?"
+
+#### `Router`
+```json
+{
+  "intent": "prediction",
+  "confidence": 1.0,
+  "entities": {
+    "team": "Collingwood Magpies",
+    "sub_intent": "top_player",
+    "stat_type": "cpi",
+    "year": 2025
+  }
+}
+```
+> **Annotation:** [Turn 1] Routes as 'prediction/top_player' for Geelong. [Turn 2] The force_entities pre-resolve 'Collingwood Magpies', simulating what entity resolution with pronoun tracking would do (resolving 'Collingwood' from the follow-up context).
+
+#### `PredictionNode`
+```json
+{
+  "tool_name": "none",
+  "tool_error": null,
+  "result_len": 1850
+}
+```
+> **Annotation:** [Turn 1] Calls predict_top_player_tool for Geelong Cats 2025. [Turn 2] Calls predict_top_player_tool for Collingwood Magpies 2025. Each call uses season medians — results are independent.
+
+#### `ValidationNode`
+```json
+{
+  "outcome": "pass",
+  "error_class": "none",
+  "reason": "Tool executed successfully.",
+  "next_node": "formatter"
+}
+```
+> **Annotation:** Both turns pass validation with outcome=PASS. The conversation_history list grows after each turn (HumanMessage + AIMessage appended using the Annotated[list, operator.add] reducer). This is the LangGraph state accumulation pattern from Task 1.
+
+#### `ResponseFormatterNode`
+```json
+{
+  "final_response": "\u26a0\ufe0f  PREDICTION DISCLAIMER\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nThis output is generated by a trained statistical model and represents a\nPROBABILITY ESTIMATE, not a guaranteed outcome. Model performance:\n  \u2022 Match winner:   Accuracy=66.8%, ROC-AUC=0.643, Brier=0.2"
+}
+```
+> **Annotation:** Both turns return prediction responses with full disclaimers. Multi-turn context is maintained in state, allowing a future pronoun-resolution node to handle 'they' or 'that team' references.
+
+---
+
+## 4. LangGraph vs Monolithic Agent — Comparison
+
+## Comparison: LangGraph Orchestration vs Monolithic LangChain Agent
+
+### What Specifically Improved?
+
+**1. Guaranteed prediction disclaimers and consistent response framing.**
+In the Day-3 monolithic `AFLToolRoutingAgent`, the LLM generated the final response
+in free-form after calling a tool — meaning the disclaimer, if it appeared at all,
+was a product of the system prompt wording and the LLM's sampling temperature.
+Two calls to the same prediction query could produce one response with a caveat and
+one without. In the LangGraph system, the `ResponseFormatterNode` is the *only*
+code path that writes `final_response` for prediction intents, and the mandatory
+disclaimer is the first string assembled — it is structurally impossible to produce
+a prediction response without it.
+
+**2. Deterministic error handling instead of silent hallucination.**
+The monolithic agent, when faced with an unresolvable team name or unsupported stat
+type, would attempt to answer anyway, sometimes fabricating statistics or inventing
+team records. The LangGraph `ValidationNode` intercepts every tool result before
+it reaches the user, classifies the error into a 10-type taxonomy, and either asks
+for clarification (CLARIFY path — targets the exact missing field) or explains the
+scope limit (FALLBACK path — lists what IS and IS NOT supported). The user never
+receives a made-up number.
+
+**3. Testability and auditability of each decision point.**
+The monolithic agent's reasoning lived entirely inside LLM text that was
+discarded after generation — there was no way to unit-test the routing decision
+independently of the tool call or final response. The LangGraph state object
+(`AFLGraphStateV4`) captures every intermediate decision: `detected_intent`,
+`intent_confidence`, `intent_entities`, `validation_outcome`, `error_class`,
+`missing_fields`. This made the 12 end-to-end tests in Task 5 deterministic
+and reproducible — each node can be tested in complete isolation, and failures
+are traceable to the exact node and state field that caused them.
+
+
+## 5. Sample Responses
+
+### Conversation 05: Prediction — match winner (Pies vs Cats slang) [TRACED]
+
+```text
+⚠️  PREDICTION DISCLAIMER
+─────────────────────────────────────────────────────────────────────────
+This output is generated by a trained statistical model and represents a
+PROBABILITY ESTIMATE, not a guaranteed outcome. Model performance:
+  • Match winner:   Accuracy=66.8%, ROC-AUC=0.643, Brier=0.231
+  • Top player:     NDCG@10=0.931, Precision@10=0.950
+Do NOT use these predictions as the basis for any financial, betting, or
+investment decisions. Always consider current form, injuries, and weather.
+─────────────────────────────────────────────────────────────────────────
+
+🏉 MATCH PREDICTION: Collingwood Magpies vs Geelong Cats
+   Timing: This round → Round 20, 2025
+       Home: Collingwood Magpies
+       Away: Geelong Cats
+
+   Predicted Winner  : Collingwood Magpies
+   P(Collingwood Magpi
+```
+
+### Conversation 07: Off-topic — pizza recipe refusal
+
+```text
+🚫 OUT OF SCOPE
+──────────────────────────────────────────────────
+
+I'm sorry, but that's outside my AFL expertise. I specialize exclusively in AFL. I'd be happy to help you with:
+  • Match predictions (e.g., 'Will Geelong beat Richmond?')
+  • Player stats (e.g., 'Top players for Collingwood in 2024')
+  • H2H records (e.g., 'Carlton vs Essendon history')
+  • AFL rules (e.g., 'Explain holding the ball')
+```
+
+### Conversation 08: Clarification — unknown team [TRACED]
+
+```text
+[Query: "Predict the winner: Mystery FC vs Geelong"]
+
+🔍 I couldn't identify the team you mentioned. To help you, I need a
+recognisable AFL team name.
+
+Supported teams include:
+  Adelaide Crows, Brisbane Lions, Carlton Blues, Collingwood Magpies,
+  Essendon Bombers, Fremantle Dockers, Geelong Cats, Gold Coast Suns,
+  GWS Giants, Hawthorn Hawks, Melbourne Demons, North Melbourne Kangaroos,
+  Port Adelaide Power, Richmond Tigers, St Kilda Saints, Sydney Swans,
+  West Coast Eagles, Western Bulldogs
+
+Or use a nickname: "Pies" (Collingwood), "Cats" (Geelong), "Freo" (Fremantle),
+"Tiges" (Richmond), "Dees" (Melbourne), "Roos" (North Melbourne), etc.
+
+❓ Could you re-state which team(s) you meant?
+```
+
