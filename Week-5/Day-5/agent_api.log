@@ -1,0 +1,12 @@
+2026-08-05 18:05:04,081 [INFO] New Ticket Received | ID: 17e09d7a-fd39-4bd0-83e4-98b50596e948 | Input: 'How do I reset my password?'
+2026-08-05 18:05:04,827 [INFO] Ticket Processed | ID: 17e09d7a-fd39-4bd0-83e4-98b50596e948 | Category: Technical | Latency: 745.82ms | Est Tokens: 42 | Needs Human: False | Status: Dispatched
+2026-08-05 18:05:04,829 [INFO] HTTP Request: POST http://testserver/triage "HTTP/1.1 200 OK"
+2026-08-05 18:34:05,423 [INFO] New Ticket Received | ID: c5774486-c29b-4c12-9d1f-89e9e9b4ae07 | Input: 'How do I reset my password?'
+2026-08-05 18:34:05,505 [INFO] AFC is enabled with max remote calls: 10.
+2026-08-05 18:34:06,509 [INFO] HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-05 18:34:07,311 [INFO] AFC is enabled with max remote calls: 10.
+2026-08-05 18:34:18,417 [INFO] Ticket Processed | ID: c5774486-c29b-4c12-9d1f-89e9e9b4ae07 | Category: Technical | Latency: 12994.65ms | Est Tokens: 42 | Needs Human: False | Status: Dispatched
+2026-08-05 18:34:18,420 [INFO] HTTP Request: POST http://testserver/triage "HTTP/1.1 200 OK"
+2026-08-05 18:35:30,416 [INFO] New Ticket Received | ID: f8d1dbc4-81ff-4bae-acb7-e78e90aee971 | Input: 'How do I reset my password?'
+2026-08-05 18:35:32,509 [INFO] Ticket Processed | ID: f8d1dbc4-81ff-4bae-acb7-e78e90aee971 | Category: Technical | Latency: 2093.37ms | Est Tokens: 42 | Needs Human: False | Status: Dispatched
+2026-08-05 18:35:32,511 [INFO] HTTP Request: POST http://testserver/triage "HTTP/1.1 200 OK"
