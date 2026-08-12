@@ -959,9 +959,9 @@ class DateResolver:
 
         # ── Explicit year ─────────────────────────────────────────────────────
         import re
-        year_match = re.search(r"\b(19[89]\d|20[012]\d)\b", expr)
+        year_match = re.search(r"\b(19\d{2}|20\d{2})\b", expr)
         if year_match:
-            yr = min(int(year_match.group()), _DATA_YEAR_MAX)
+            yr = int(year_match.group())
             # Check for explicit round in same expression
             rnd_match = re.search(r"\bround\s*(\d{1,2})\b", expr)
             rn = int(rnd_match.group(1)) if rnd_match else 12

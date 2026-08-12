@@ -2,7 +2,7 @@
 
 > Full pipeline tests: Router → Tool → Validation → Clarify/Fallback/Formatter
 
-**Run at:** 2026-07-30 17:15
+**Run at:** 2026-08-12 12:52
 
 ## 1. Test Results Summary
 
@@ -61,7 +61,7 @@
 {
   "tool_name": "none",
   "tool_error": null,
-  "result_len": 1643
+  "result_len": 1629
 }
 ```
 > **Annotation:** PredictionNode calls predict_match_winner_tool with the slang names. The tool runs NicknameResolver internally: 'Pies' → 'Collingwood Magpies', 'Cats' → 'Geelong Cats'. DateResolver maps 'this week' → Round 20, 2025. Model returns probabilities.
@@ -286,12 +286,12 @@ investment decisions. Always consider current form, injuries, and weather.
 ─────────────────────────────────────────────────────────────────────────
 
 🏉 MATCH PREDICTION: Collingwood Magpies vs Geelong Cats
-   Timing: This round → Round 20, 2025
+   Timing: This round → Round 22, 2025
        Home: Collingwood Magpies
        Away: Geelong Cats
 
-   Predicted Winner  : Collingwood Magpies
-   P(Collingwood Magpi
+   Predicted Winner  : Geelong Cats
+   P(Collingwood Magpies ): 4
 ```
 
 ### Conversation 07: Off-topic — pizza recipe refusal

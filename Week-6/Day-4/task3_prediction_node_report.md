@@ -49,8 +49,8 @@ Extended `_NICKNAME_MAP` covers 40+ AFL slang references:
 
 | Expression | Season Year | Round | Finals? |
 |---|---|---|---|
-| `this week` | 2025 | 20 | No |
-| `next round` | 2025 | 21 | No |
+| `this week` | 2025 | 22 | No |
+| `next round` | 2025 | 23 | No |
 | `Round 15` | 2025 | 15 | No |
 | `finals` | 2025 | 25 | Yes |
 | `grand final` | 2025 | 27 | Yes |
