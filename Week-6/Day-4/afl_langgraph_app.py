@@ -54,9 +54,13 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 
 # ── API key (same approach as Day-3) ─────────────────────────────────────────
 def _get_api_key() -> str:
-    p1, p2 = "AQ.Ab8RN6LGo9hfa", "R52sklgtMZAjG"
-    p3, p4 = "4fMhoZIFjy76UR",   "nYX6Jz4xrA"
-    return os.environ.get("GEMINI_API_KEY", p1 + p2 + p3 + p4)
+    # First check GROQ, then GEMINI, then fallback to default Groq key like Day-3
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        key = ""
+    return key
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -247,7 +251,7 @@ class AFLIntentClassifier:
         r"\bcooking\b", r"\bjoke\b", r"\btennis\b", r"\bbasketball\b",
     ]
 
-    def __init__(self, prompt_version: int = 2, model: str = "gemini-2.0-flash"):
+    def __init__(self, prompt_version: int = 2, model: str = "gemini-1.5-flash"):
         self._api_key = _get_api_key()
         self._model = model
         self._prompt_template = _ROUTER_PROMPT_V2 if prompt_version == 2 else _ROUTER_PROMPT_V1
@@ -278,13 +282,15 @@ class AFLIntentClassifier:
         """
         prompt = self._prompt_template.format(query=query)
         try:
-            client = genai.Client(api_key=self._api_key)
-            response = client.models.generate_content(
-                model=self._model,
-                contents=prompt,
-                config={"temperature": 0.0},
+            from groq import Groq
+            client = Groq(api_key=self._api_key)
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                response_format={"type": "json_object"}
             )
-            raw = response.text.strip()
+            raw = response.choices[0].message.content.strip()
 
             # Strip markdown fences if present
             raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
@@ -3185,8 +3191,17 @@ class DirectAnswerNode:
     LangGraph node: DirectAnswerNode.
 
     For off_topic: returns hard-coded AFL-redirect refusal (no LLM).
-    For factual:   calls Day-3 AFLChatAgent with the AFL system prompt.
+    For factual:   searches the KB first. Only uses LLM if KB has a
+                   confident match (score > 0.15). Otherwise returns an
+                   honest 'no data' message — never hallucinates.
     """
+
+    # KB confidence threshold — must be topically relevant to trust the LLM
+    # 0.30 means the KB section must actually match the query topic
+    _KB_THRESHOLD = 0.30
+
+    # Use local enriched KB if it exists, otherwise fall back to Day-3
+    _LOCAL_KB = Path(__file__).parent / "afl_knowledge_base.txt"
 
     def __call__(self, state: dict) -> dict:
         query  = state.get("user_query", "")
@@ -3194,6 +3209,7 @@ class DirectAnswerNode:
 
         if intent == "off_topic":
             refusal = (
+                "🚫 OUT OF SCOPE\n" + "─" * 50 + "\n\n"
                 "I'm sorry, but that's outside my AFL expertise. "
                 + _AFL_REDIRECT
             )
@@ -3202,22 +3218,98 @@ class DirectAnswerNode:
                 "tool_error":   None,
             }
 
-        # Factual: call Day-3 chat agent
+        # ── Factual: search KB first (prefer local enriched KB) ──────────────
         try:
-            history = state.get("conversation_history") or []
-            history_tuples = []
-            # Convert BaseMessage history to (human, ai) tuples
-            for i in range(0, len(history) - 1, 2):
-                h_msg = getattr(history[i], "content", "")
-                a_msg = getattr(history[i + 1], "content", "") if i + 1 < len(history) else ""
-                if h_msg:
-                    history_tuples.append((h_msg, a_msg))
+            # Use local enriched KB if available, else fall back to Day-3 KB
+            if self._LOCAL_KB.exists():
+                from afl_day3_all_tasks import SemanticRetrievalEngine as _SRE
+                _local_sem = _SRE.__new__(_SRE)
+                _local_sem.corpus = []
+                from sklearn.feature_extraction.text import TfidfVectorizer
+                _local_sem.vectorizer = TfidfVectorizer(stop_words="english")
+                _local_sem.tfidf_matrix = None
+                with open(self._LOCAL_KB, "r", encoding="utf-8") as _f:
+                    _content = _f.read()
+                _paras = _content.split("\n\n")
+                _local_sem.corpus = [p.strip() for p in _paras if p.strip() and not p.strip().startswith("# ")]
+                if _local_sem.corpus:
+                    _local_sem.tfidf_matrix = _local_sem.vectorizer.fit_transform(_local_sem.corpus)
+                    import numpy as _np
+                    from sklearn.metrics.pairwise import cosine_similarity as _cos
+                    _qv = _local_sem.vectorizer.transform([query])
+                    _sims = _cos(_qv, _local_sem.tfidf_matrix).flatten()
+                    _top = _np.argsort(_sims)[::-1][:2]
+                    _results = [{"score": round(float(_sims[i]), 4), "text": _local_sem.corpus[i]} for i in _top if _sims[i] > 0.05]
+                    if _results:
+                        kb_result = f"Knowledge base results for: '{query}'"
+                        for _i, _r in enumerate(_results, 1):
+                            kb_result += f"\n\nMatch #{_i} (score={_r['score']}):\n{_r['text']}"
+                    else:
+                        kb_result = retrieve_afl_knowledge(query)
+                else:
+                    kb_result = retrieve_afl_knowledge(query)
+            else:
+                kb_result = retrieve_afl_knowledge(query)
 
-            answer = chat_with_agent(query, history_tuples)
-            return {
-                "tool_results": {"direct_answer": answer, "tool_name": "afl_chat_agent"},
-                "tool_error":   None,
-            }
+            # Check if KB returned a confident match (not a "No relevant entries" message)
+            kb_has_data = (
+                "No relevant entries found" not in kb_result
+                and "Knowledge base not loaded" not in kb_result
+                and "score=0.0" not in kb_result
+            )
+
+            # Try to extract score and check threshold
+            import re as _re
+            scores = [float(m) for m in _re.findall(r"score=([\d.]+)", kb_result)]
+            best_score = max(scores) if scores else 0.0
+            kb_confident = kb_has_data and best_score >= self._KB_THRESHOLD
+
+            if kb_confident:
+                # KB has useful info — call LLM grounded with KB context
+                history = state.get("conversation_history") or []
+                history_tuples = []
+                for i in range(0, len(history) - 1, 2):
+                    h_msg = getattr(history[i], "content", "")
+                    a_msg = getattr(history[i + 1], "content", "") if i + 1 < len(history) else ""
+                    if h_msg:
+                        history_tuples.append((h_msg, a_msg))
+
+                grounded_query = (
+                    f"[KNOWLEDGE BASE CONTEXT — use ONLY this to answer, do not add outside facts]\n"
+                    f"{kb_result}\n"
+                    f"[END CONTEXT]\n\n"
+                    f"User question: {query}"
+                )
+                answer = chat_with_agent(grounded_query, history_tuples)
+                return {
+                    "tool_results": {
+                        "direct_answer": answer,
+                        "tool_name": "afl_knowledge_base",
+                        "kb_score": best_score,
+                    },
+                    "tool_error": None,
+                }
+            else:
+                # KB has no confident data — return honest "no data" message
+                honest_reply = (
+                    "📖 AFL FACTUAL ANSWER\n" + "─" * 50 + "\n\n"
+                    f"I don't have reliable data in my knowledge base to answer:\n"
+                    f"  \"{query}\"\n\n"
+                    "To avoid giving you incorrect information, I won't guess.\n\n"
+                    "You may be able to find this by asking:\n"
+                    "  • A retrieval query (e.g. 'What was player 43266's CPI in 2024?')\n"
+                    "  • A knowledge base question (e.g. 'Explain the holding the ball rule')\n"
+                    "  • A match prediction (e.g. 'Who will win Geelong vs Richmond?')\n\n"
+                    "Official AFL records: https://www.afl.com.au/stats"
+                )
+                return {
+                    "tool_results": {
+                        "direct_answer": honest_reply,
+                        "tool_name": "no_data_honest_reply",
+                    },
+                    "tool_error": None,
+                }
+
         except Exception as e:
             return {
                 "tool_results": None,

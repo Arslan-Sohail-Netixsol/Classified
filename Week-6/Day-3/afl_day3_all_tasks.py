@@ -2,7 +2,7 @@
 """
 afl_day3_all_tasks.py
 =====================
-Week 6 Day 3 — Complete AFL LangChain Agent (All Tasks in One File)
+Week 6 Day 3 â€” Complete AFL LangChain Agent (All Tasks in One File)
 
 Task 1 : Scope Guardrails & Adversarial Tests
 Task 2 : Retrieval Layer (Structured + Semantic)
@@ -15,7 +15,7 @@ Run this single file to execute all tasks end-to-end:
 """
 
 from __future__ import annotations
-import os, sys, re, json, time, warnings
+import os, sys, re, json, time, warnings, sqlite3
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, Dict
 
@@ -32,9 +32,9 @@ from langchain_core.tools import tool
 
 warnings.filterwarnings("ignore")
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # PATH SETUP
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _HERE  = Path(__file__).parent
 _DAY1  = _HERE.parent / "Day-1"
 _DAY2  = _HERE.parent / "Day-2"
@@ -46,10 +46,10 @@ sys.path.insert(0, str(_DAY2))
 import predict   # Day-2 prediction helpers (CANONICAL_TEAMS, _normalise_team)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TASK 1 — SCOPE GUARDRAILS
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# TASK 1 â€” SCOPE GUARDRAILS
 # AFL System Prompt + GeminiChatModel wrapper + AFLChatAgent + Adversarial Tests
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 AFL_SYSTEM_PROMPT = """You are 'AFL Analyst Bot', a dedicated, domain-scoped assistant specializing exclusively in Australian Rules Football (AFL/VFL).
 
@@ -70,44 +70,19 @@ Your core operational directives are:
 """
 
 
-class GeminiChatModel(BaseChatModel):
-    """Custom LangChain BaseChatModel wrapping google-genai Client."""
-    api_key: str
-    model_name: str = "gemini-3.5-flash-lite"
-    temperature: float = 0.0
+from langchain_groq import ChatGroq
 
-    @property
-    def _llm_type(self) -> str:
-        return "gemini-custom"
-
-    def _generate(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> ChatResult:
-        client = genai.Client(api_key=self.api_key)
-        system_instruction = ""
-        contents = []
-        for m in messages:
-            if m.type == "system":
-                system_instruction += m.content + "\n"
-            elif m.type in ("human", "ai"):
-                contents.append(m.content)
-        if not contents:
-            if system_instruction:
-                contents.append(system_instruction.strip())
-                system_instruction = ""
-            else:
-                contents.append("Hi")
-        config: dict = {"temperature": self.temperature}
-        if system_instruction:
-            config["system_instruction"] = system_instruction.strip()
-        response = client.models.generate_content(
-            model=self.model_name, contents=contents, config=config
+class GeminiChatModel(ChatGroq):
+    """Custom LangChain BaseChatModel wrapping ChatGroq."""
+    
+    def __init__(self, api_key: str, **kwargs):
+        super().__init__(
+            api_key=api_key,
+            model_name="llama-3.1-8b-instant", 
+            temperature=0.0,
+            **kwargs
         )
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=response.text or ""))])
+
 
 
 class AFLGroundingEngine:
@@ -131,7 +106,7 @@ class AFLGroundingEngine:
         lines = [f"Match Records for {team} in {year}:"]
         for _, r in rows.iterrows():
             w = r["home_team"] if r["target_win"] == 1 else r["away_team"]
-            lines.append(f"  - {r['match_date']} Rnd {r['round']}: {r['home_team']} vs {r['away_team']} → Winner: {w} by {abs(int(r['home_margin']))} pts")
+            lines.append(f"  - {r['match_date']} Rnd {r['round']}: {r['home_team']} vs {r['away_team']} â†’ Winner: {w} by {abs(int(r['home_margin']))} pts")
         return "\n".join(lines)
 
     def get_team_roster_stats(self, team: str, year: int) -> str:
@@ -189,8 +164,9 @@ class AFLChatAgent:
 _agent_instance: Optional[AFLChatAgent] = None
 
 def _get_api_key() -> str:
-    p1, p2 = "AQ.Ab8RN6LGo9hfa" + "R52sklgtMZAjG", "4fMhoZIFjy76UR" + "nYX6Jz4xrA"
-    return os.environ.get("GEMINI_API_KEY", p1 + p2)
+    # Use the environment variable if set, otherwise fallback to the provided key
+    key = os.environ.get("GROQ_API_KEY", "")
+    return key
 
 def get_agent() -> AFLChatAgent:
     global _agent_instance
@@ -205,7 +181,7 @@ def chat_with_agent(query: str, history: List[Tuple[str, str]] = None) -> str:
 def run_task1_adversarial_tests() -> None:
     """Task 1: Run 10 adversarial prompts to validate scope guardrails."""
     print("\n" + "=" * 70)
-    print("  TASK 1 — Adversarial Guardrail Tests (10 prompts)")
+    print("  TASK 1 â€” Adversarial Guardrail Tests (10 prompts)")
     print("=" * 70)
 
     test_cases = [
@@ -239,27 +215,27 @@ def run_task1_adversarial_tests() -> None:
         status = "PASS" if ok else "FAIL"
         if ok:
             passed += 1
-        print(f"  → {status}  |  response snippet: {resp.strip()[:80]}...")
+        print(f"  â†’ {status}  |  response snippet: {resp.strip()[:80]}...")
         log_rows.append((cid, category, prompt, expected, status))
 
     print(f"\n  TASK 1 RESULT: {passed}/{len(test_cases)} passed")
 
     rp = _HERE / "adversarial_test_log.md"
     with open(rp, "w", encoding="utf-8") as f:
-        f.write("# Adversarial Test Log — Week 6 Day 3\n\n")
+        f.write("# Adversarial Test Log â€” Week 6 Day 3\n\n")
         f.write(f"**Overall Result:** {passed} / {len(test_cases)} tests passed.\n\n")
         f.write("## Test Results Table\n\n")
         f.write("| ID | Category | Prompt | Expected | Status |\n|---|---|---|---|---|\n")
         for cid, cat, pr, exp, st in log_rows:
-            icon = "✅ PASS" if st == "PASS" else "❌ FAIL"
+            icon = "âœ… PASS" if st == "PASS" else "âŒ FAIL"
             f.write(f"| {cid} | {cat} | `{pr}` | {exp} | {icon} |\n")
-    print(f"  Log written → {rp}")
+    print(f"  Log written â†’ {rp}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TASK 2 — RETRIEVAL LAYER
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# TASK 2 â€” RETRIEVAL LAYER
 # Structured (Pandas) + Unstructured (TF-IDF / Cosine Similarity) retrieval
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class StructuredRetrievalEngine:
     """Exact pandas lookups for match and player datasets."""
@@ -365,6 +341,55 @@ class SemanticRetrievalEngine:
 _str_engine = StructuredRetrievalEngine()
 _sem_engine  = SemanticRetrievalEngine()
 
+# Initialize SQLite Database for dataset-wide queries
+_sqlite_conn = sqlite3.connect(':memory:', check_same_thread=False)
+if _str_engine.match_df is not None:
+    _str_engine.match_df.to_sql("matches", _sqlite_conn, index=False)
+if _str_engine.player_df is not None:
+    _str_engine.player_df.to_sql("players", _sqlite_conn, index=False)
+
+_MOCK_PLAYER_MAP = {
+    "sam walsh": 43269,
+    "nick daicos": 43266,
+    "lachie neale": 43268,
+    "charlie curnow": 43267,
+    "marcus bontempelli": 43265
+}
+# Load names into database so SQL can JOIN on them
+_names_df = pd.DataFrame(list(_MOCK_PLAYER_MAP.items()), columns=['name', 'player_id'])
+_names_df.to_sql("player_names", _sqlite_conn, index=False)
+
+def execute_sql_query(query: str) -> str:
+    try:
+        df = pd.read_sql_query(query, _sqlite_conn)
+        if df.empty:
+            return "No results found."
+        return f"SQL Query Executed:\n{query}\n\nResult:\n{df.to_string()}"
+    except Exception as e:
+        return f"SQL Error: {e}"
+
+def resolve_player_name(name: str) -> str:
+    nl = name.lower().strip()
+    if nl in _MOCK_PLAYER_MAP:
+        return f"Resolved '{name}' to player_id={_MOCK_PLAYER_MAP[nl]}"
+    return f"Could not resolve '{name}' to a player_id."
+
+_TEAM_ALIASES = {
+    "pies": "Collingwood Magpies",
+    "blues": "Carlton Blues",
+    "lions": "Brisbane Lions",
+    "cats": "Geelong Cats",
+    "dogs": "W. Bulldogs",
+    "doggies": "W. Bulldogs"
+}
+
+def resolve_team_name(name: str) -> str:
+    nl = name.lower().strip()
+    for alias, canon in _TEAM_ALIASES.items():
+        if alias in nl:
+            return f"Resolved '{name}' to team='{canon}'"
+    return f"No special resolution needed for '{name}'."
+
 
 def get_team_h2h_record(team_a: str, team_b: str,
                          start_year: int = 1983, end_year: int = 2025) -> str:
@@ -383,7 +408,7 @@ def get_team_h2h_record(team_a: str, team_b: str,
         "\nRecent Meetings:"
     ]
     for m in res["recent_meetings"]:
-        lines.append(f"  - {m['date']} (Rnd {m['round']}): {m['scoreline']} → {m['winner']}")
+        lines.append(f"  - {m['date']} (Rnd {m['round']}): {m['scoreline']} â†’ {m['winner']}")
     return "\n".join(lines)
 
 
@@ -425,7 +450,7 @@ def retrieve_afl_knowledge(query: str) -> str:
 def run_task2_retrieval_demos() -> None:
     """Task 2: Demonstrate structured + semantic retrieval tools."""
     print("\n" + "=" * 70)
-    print("  TASK 2 — Retrieval Layer Demos")
+    print("  TASK 2 â€” Retrieval Layer Demos")
     print("=" * 70)
     print("\n[A] H2H: Richmond vs Collingwood")
     print(get_team_h2h_record("Richmond", "Collingwood"))
@@ -437,10 +462,10 @@ def run_task2_retrieval_demos() -> None:
     print(retrieve_afl_knowledge("What is Kardinia Park venue fortress?"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TASK 3 — LANGCHAIN TOOL REGISTRATION & GROUNDING VALIDATION
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# TASK 3 â€” LANGCHAIN TOOL REGISTRATION & GROUNDING VALIDATION
 # Register tools with LangChain @tool decorator + verify_grounding + ReAct agent
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @tool
 def get_team_h2h_record_tool(team_a: str, team_b: str,
@@ -471,10 +496,29 @@ def retrieve_afl_knowledge_tool(query: str) -> str:
     return retrieve_afl_knowledge(query)
 
 
+@tool
+def query_afl_database_tool(sql_query: str) -> str:
+    """Execute a READ-ONLY SQL query against the AFL database for dataset-wide aggregations (e.g. highest, most, averages)."""
+    return execute_sql_query(sql_query)
+
+@tool
+def resolve_player_name_tool(name: str) -> str:
+    """Resolve a player's name (e.g. 'Nick Daicos') to their integer player_id."""
+    return resolve_player_name(name)
+
+@tool
+def resolve_team_name_tool(name: str) -> str:
+    """Resolve team slang (e.g. 'Pies') to a canonical team name."""
+    return resolve_team_name(name)
+
+
 TOOL_MAP = {
     "get_team_h2h_record_tool":    get_team_h2h_record_tool,
     "get_player_season_stats_tool": get_player_season_stats_tool,
     "retrieve_afl_knowledge_tool":  retrieve_afl_knowledge_tool,
+    "query_afl_database_tool":      query_afl_database_tool,
+    "resolve_player_name_tool":     resolve_player_name_tool,
+    "resolve_team_name_tool":       resolve_team_name_tool,
 }
 
 
@@ -531,43 +575,79 @@ class AFLToolRoutingAgent:
                 history_text += f"[User]: {t['query']}\n[Agent]{tc}: {t['final_response']}\n"
             history_text += "\n"
 
-        # Step 1 — Tool routing
-        routing_prompt = f"""{AFL_SYSTEM_PROMPT}
+        scratchpad = ""
+        tools_called = []
+        all_tool_outputs = []
+        last_call = None
+
+        # Step 1 & 2 â€” Multi-step Tool routing loop
+        for iteration in range(3):
+            routing_prompt = f"""{AFL_SYSTEM_PROMPT}
 
 You are a tool-router for the AFL Analyst Bot. Select the correct tool:
 1. `get_team_h2h_record_tool`: team_a (str), team_b (str). Use for H2H records.
 2. `get_player_season_stats_tool`: player_id (int), year (int, 1983-2025). Use for exact player stats.
 3. `retrieve_afl_knowledge_tool`: query (str). Use for rules, venues, trivia.
+4. `resolve_player_name_tool`: name (str). Use BEFORE querying exact player season stats (Tool 2) if you don't know their player_id. Do NOT use this for averages/aggregations.
+5. `resolve_team_name_tool`: name (str). Use to resolve team slang.
+6. `query_afl_database_tool`: sql_query (str). Use for dataset-wide aggregations (highest, most, averages). When querying by player name, use this tool directly and write a SQL JOIN with `player_names`.
+   Schema for `matches` table: id, match_date, year, round, venue, home_team, away_team, result ('W', 'L', 'D' for home_team), home_margin, target_win (1 if home won, 0 otherwise)
+   Schema for `players` table: player_id, year, team, games_played, target_cpi_raw, feat_prev_disposals, feat_prev_goals
+   Schema for `player_names` table: name, player_id (JOIN this with `players` to query by player name)
 
 Guidelines:
 - Resolve pronouns from Conversational History.
 - For off-topic queries, respond EXACTLY with:  TOOL: None
 - If tool needed: TOOL: <tool_name> | ARGS: {{"arg": "value"}}
-- If no tool needed: TOOL: None
+- If you have all info needed to answer in the 'Previous Tool Steps', respond EXACTLY with: TOOL: None
+- IMPORTANT: You MUST use `resolve_player_name_tool` if the user asks about a player by name and you do not know their ID. Do not ask the user for the ID.
+- Respond ONLY with the TOOL string (e.g. TOOL: resolve_player_name_tool | ARGS: ...). Do not include any conversational text or explanations.
 
 {history_text}Current User Query: {user_query}
+Previous Tool Steps in this turn:
+{scratchpad}
 """
-        routing = self.llm.invoke([SystemMessage(content=routing_prompt)]).content.strip()
-        print(f"  → Routing: {routing}")
+            routing = self.llm.invoke([SystemMessage(content=routing_prompt)]).content.strip()
+            print(f"  â†’ Routing ({iteration+1}): {routing}")
 
-        # Step 2 — Execute tool
-        tool_output, tool_name = "", None
-        m = re.search(r'TOOL:\s*(\w+)\s*\|\s*ARGS:\s*(\{.*\})', routing)
-        if m:
-            tool_name = m.group(1).strip()
-            try:
-                args = json.loads(m.group(2).strip())
-                if tool_name in TOOL_MAP:
-                    print(f"  → Executing {tool_name}({args})")
-                    tool_output = TOOL_MAP[tool_name].invoke(args)
-                else:
-                    tool_output = f"Error: unknown tool '{tool_name}'"
-            except Exception as e:
-                tool_output = f"Tool error: {e}"
-        else:
-            tool_output = "No tool result available."
+            tool_name = None
+            m = re.search(r'TOOL:\s*(\w+)\s*\|\s*ARGS:\s*(\{.*?\})\s*$', routing)
+            if not m:
+                m = re.search(r'TOOL:\s*(\w+)\s*\|\s*ARGS:\s*(\{.*\})', routing)
+            
+            if m:
+                tool_name = m.group(1).strip()
+                if tool_name.lower() == "none":
+                    break
+                try:
+                    args_str = m.group(2).strip()
+                    if args_str.endswith("}}"): args_str = args_str[:-1]
+                    
+                    current_call = (tool_name, args_str)
+                    if current_call == last_call:
+                        print(f"  â†’ Repeated tool call detected ({tool_name}). Breaking loop to prevent infinite recursion.")
+                        break
+                    last_call = current_call
+                    
+                    args = json.loads(args_str)
+                    if tool_name in TOOL_MAP:
+                        print(f"  â†’ Executing {tool_name}({args})")
+                        tool_output = TOOL_MAP[tool_name].invoke(args)
+                    else:
+                        tool_output = f"Error: unknown tool '{tool_name}'"
+                except Exception as e:
+                    tool_output = f"Tool error: {e}"
+                
+                scratchpad += f"\nCalled {tool_name} with {args_str}\nResult: {tool_output}\n"
+                tools_called.append(tool_name)
+                all_tool_outputs.append(tool_output)
+            else:
+                break
 
-        # Step 3 — Generate final answer
+        final_tool_called = ", ".join(tools_called) if tools_called else None
+        final_tool_output = "\n\n".join(all_tool_outputs) if all_tool_outputs else "No tool result available."
+
+        # Step 3 â€” Generate final answer
         final_prompt = f"""{AFL_SYSTEM_PROMPT}
 
 Answer the user's question using ONLY the tool result below for any statistics.
@@ -575,13 +655,13 @@ Do not invent numbers. If a stat is absent from the tool result, say so.
 For off-topic queries, apply REFUSAL RULES and steer back to AFL.
 
 {history_text}Current User Query: {user_query}
-Tool Output: {tool_output}
+Tool Output: {final_tool_output}
 """
         final_response = self.llm.invoke([SystemMessage(content=final_prompt)]).content.strip()
-        print(f"  → Response: {final_response[:120]}...")
+        print(f"  â†’ Response: {final_response[:120]}...")
 
-        # Step 4 — Grounding verification
-        grounding = verify_grounding(tool_output, final_response)
+        # Step 4 â€” Grounding verification
+        grounding = verify_grounding(final_tool_output, final_response)
         if grounding["mismatched_stats"]:
             hist_nums = set(re.findall(r'\b\d+(?:\.\d+)?\b', history_text))
             still_bad = [n for n in grounding["mismatched_stats"] if n not in hist_nums]
@@ -592,17 +672,17 @@ Tool Output: {tool_output}
                       "programmed only", "cooking assistant"]):
                 grounding["status"] = "VERIFIED_GROUNDED_REFUSAL"
                 grounding["mismatched_stats"] = []
-        print(f"  → Grounding: {grounding['status']}")
+        print(f"  â†’ Grounding: {grounding['status']}")
 
-        return {"query": user_query, "tool_called": tool_name,
-                "raw_tool_output": tool_output, "final_response": final_response,
+        return {"query": user_query, "tool_called": final_tool_called,
+                "raw_tool_output": final_tool_output, "final_response": final_response,
                 "grounding_check": grounding}
 
 
 def run_task3_tool_demos() -> None:
     """Task 3: Run tool-calling demos and write grounding validation report."""
     print("\n" + "=" * 70)
-    print("  TASK 3 — LangChain Tool Demos + Grounding Validation")
+    print("  TASK 3 â€” LangChain Tool Demos + Grounding Validation")
     print("=" * 70)
     agent = AFLToolRoutingAgent()
     questions = [
@@ -614,7 +694,7 @@ def run_task3_tool_demos() -> None:
 
     rp = _HERE / "grounding_validation_report.md"
     with open(rp, "w", encoding="utf-8") as f:
-        f.write("# Grounding & Tool Validation Report — Week 6 Day 3\n\n")
+        f.write("# Grounding & Tool Validation Report â€” Week 6 Day 3\n\n")
         f.write("Logs tool-calling behavior and grounding verification for Task 3.\n\n")
         f.write("## Test Executions\n\n")
         for i, r in enumerate(results, 1):
@@ -626,18 +706,18 @@ def run_task3_tool_demos() -> None:
                 f.write(f"* **Mismatched Stats:** `{r['grounding_check']['mismatched_stats']}`\n")
             f.write("\n#### Raw Tool Output\n```text\n" + r["raw_tool_output"] + "\n```\n")
             f.write("\n#### Final Agent Response\n" + r["final_response"] + "\n\n---\n\n")
-    print(f"  Grounding report → {rp}")
+    print(f"  Grounding report â†’ {rp}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TASK 4 — CONVERSATION MEMORY & MULTI-TURN DEMOS
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# TASK 4 â€” CONVERSATION MEMORY & MULTI-TURN DEMOS
 # Demonstrates 5-turn context-carrying via history list injection
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def run_task4_memory_demos() -> None:
     """Task 4: 5-turn conversation that carries context across turns."""
     print("\n" + "=" * 70)
-    print("  TASK 4 — Multi-Turn Memory Conversation")
+    print("  TASK 4 â€” Multi-Turn Memory Conversation")
     print("=" * 70)
     agent = AFLToolRoutingAgent()
     turns = [
@@ -655,7 +735,7 @@ def run_task4_memory_demos() -> None:
 
     rp = _HERE / "conversation_memory_report.md"
     with open(rp, "w", encoding="utf-8") as f:
-        f.write("# Conversation Memory Report — Week 6 Day 3\n\n")
+        f.write("# Conversation Memory Report â€” Week 6 Day 3\n\n")
         f.write("Verifies multi-turn context carrying across a 5-turn AFL conversation.\n\n")
         f.write("## 5-Turn Transcript\n\n")
         for i, r in enumerate(history, 1):
@@ -665,18 +745,18 @@ def run_task4_memory_demos() -> None:
             f.write(f"* **Matched Numbers:** `{r['grounding_check']['matched_stats']}`\n")
             f.write("\n#### Tool Output\n```text\n" + r["raw_tool_output"] + "\n```\n")
             f.write("\n#### Agent Answer\n" + r["final_response"] + "\n\n---\n\n")
-    print(f"\n  Memory report → {rp}")
+    print(f"\n  Memory report â†’ {rp}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TASK 5 — GUARDRAIL EVALUATION SUITE
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# TASK 5 â€” GUARDRAIL EVALUATION SUITE
 # 16-prompt test set: on-topic, off-topic, and edge-case prompts
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def run_task5_guardrail_evaluation() -> None:
     """Task 5: Full 16-prompt guardrail + grounding evaluation with report."""
     print("\n" + "=" * 70)
-    print("  TASK 5 — Guardrail Evaluation Suite (16 prompts)")
+    print("  TASK 5 â€” Guardrail Evaluation Suite (16 prompts)")
     print("=" * 70)
     agent = AFLToolRoutingAgent()
 
@@ -750,7 +830,7 @@ def run_task5_guardrail_evaluation() -> None:
 
     rp = _HERE / "guardrail_evaluation_report.md"
     with open(rp, "w", encoding="utf-8") as f:
-        f.write("# Guardrail & Grounding Evaluation Report — Week 6 Day 3\n\n")
+        f.write("# Guardrail & Grounding Evaluation Report â€” Week 6 Day 3\n\n")
         f.write("## 1. Metrics Dashboard\n\n")
         f.write(f"* **Scoping Guardrail Accuracy:** `{scoped_ok} / {len(test_set)}` ({sc_score:.1%})\n")
         f.write(f"* **Grounding Accuracy:** `{grounded_ok} / {grounding_checked}` ({gr_score:.1%})\n\n")
@@ -758,9 +838,9 @@ def run_task5_guardrail_evaluation() -> None:
         f.write("| ID | Type | Prompt | Scoping Status | Grounding Status | Tool | Status |\n")
         f.write("|---|---|---|---|---|---|---|\n")
         for r in results:
-            si = "✅" if r["scoped_correct"] else "❌"
-            gi = "✅" if r["grounded_correct"] else "❌"
-            ov = "✅ PASS" if (r["scoped_correct"] and r["grounded_correct"]) else "❌ FAIL"
+            si = "âœ…" if r["scoped_correct"] else "âŒ"
+            gi = "âœ…" if r["grounded_correct"] else "âŒ"
+            ov = "âœ… PASS" if (r["scoped_correct"] and r["grounded_correct"]) else "âŒ FAIL"
             f.write(f"| {r['id']} | {r['type']} | `{r['prompt']}` | "
                     f"{si} {r['scoping_status']} | {gi} {r['grounding_status']} | "
                     f"`{r['tool_called']}` | {ov} |\n")
@@ -774,17 +854,17 @@ def run_task5_guardrail_evaluation() -> None:
         f.write("### Pattern C: Missing AFL Context on Ambiguous Rules Queries\n")
         f.write("* **Root Cause:** 'How many players on a field?' is sport-ambiguous.\n")
         f.write("* **Fix:** Generation prompt now instructs model to always prefix answers with AFL context.\n")
-    print(f"  Guardrail report → {rp}")
+    print(f"  Guardrail report â†’ {rp}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN — RUN ALL TASKS
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# MAIN â€” RUN ALL TASKS
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 if __name__ == "__main__":
-    print("\n" + "█" * 70)
-    print("  WEEK 6 DAY 3 — AFL LangChain Agent: All Tasks")
-    print("█" * 70)
+    print("\n" + "â–ˆ" * 70)
+    print("  WEEK 6 DAY 3 â€” AFL LangChain Agent: All Tasks")
+    print("â–ˆ" * 70)
 
     run_task2_retrieval_demos()    # Task 2 (no API calls, run first)
     run_task1_adversarial_tests()  # Task 1
@@ -792,6 +872,6 @@ if __name__ == "__main__":
     run_task4_memory_demos()       # Task 4
     run_task5_guardrail_evaluation()  # Task 5
 
-    print("\n" + "█" * 70)
-    print("  ALL TASKS COMPLETE — reports written to Day-3 folder")
-    print("█" * 70)
+    print("\n" + "â–ˆ" * 70)
+    print("  ALL TASKS COMPLETE â€” reports written to Day-3 folder")
+    print("â–ˆ" * 70)

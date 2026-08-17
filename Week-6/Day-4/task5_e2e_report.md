@@ -2,11 +2,11 @@
 
 > Full pipeline tests: Router → Tool → Validation → Clarify/Fallback/Formatter
 
-**Run at:** 2026-08-12 12:52
+**Run at:** 2026-08-12 12:57
 
 ## 1. Test Results Summary
 
-**Overall: 11/12 conversations passed**
+**Overall: 12/12 conversations passed**
 
 | ID | Label | Path | Outcome | Validation | Status |
 |---|---|---|---|---|---|
@@ -19,7 +19,7 @@
 | 07 | Off-topic — pizza recipe refusal | `off_topic` | `ValidationOutcome.PASS` | `none` | ✅ |
 | 08 | Clarification — unknown team [TRACED] | `clarify` | `ValidationOutcome.CLARIFY` | `unknown_team` | ✅ |
 | 09 | Clarification — same team both sides | `clarify` | `ValidationOutcome.CLARIFY` | `same_team` | ✅ |
-| 10 | Clarification — year 2035 (beyond training data) | `clarify` | `ValidationOutcome.PASS` | `none` | ❌ |
+| 10 | Clarification — year 2035 (beyond training data) | `clarify` | `ValidationOutcome.CLARIFY` | `invalid_year` | ✅ |
 | 11 | Fallback — tackles (unsupported stat) | `fallback` | `ValidationOutcome.FALLBACK` | `unsupported_stat` | ✅ |
 | 12 | Multi-turn — Geelong prediction, then Collingwood follow-up [TRACED] | `multi_turn` | `multi-turn` | `—` | ✅ |
 
