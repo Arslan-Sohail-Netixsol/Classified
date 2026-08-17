@@ -83,14 +83,12 @@ def run_with_timeout(func, args=(), kwargs={}, timeout_sec=5.0):
             logger.error("Tool execution timed out", extra={"extra_data": {"tool": func.__name__, "timeout_sec": timeout_sec}})
             raise TimeoutError(f"Execution of {func.__name__} timed out after {timeout_sec}s")
 
-from google import genai
+import openai
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
 # ── API key (same approach as Day-3) ─────────────────────────────────────────
 def _get_api_key() -> str:
-    p1, p2 = "AQ.Ab8RN6LGo9hfa", "R52sklgtMZAjG"
-    p3, p4 = "4fMhoZIFjy76UR",   "nYX6Jz4xrA"
-    return os.environ.get("GEMINI_API_KEY", p1 + p2 + p3 + p4)
+    return os.environ.get("GROK_API_KEY", "")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -255,7 +253,7 @@ class AFLIntentClassifier:
     """
     LLM-based intent classifier for the AFL LangGraph router node.
 
-    Uses Gemini with structured JSON output to classify queries into
+    Uses Grok with structured JSON output to classify queries into
     one of four intents: prediction | retrieval | factual | off_topic.
 
     Falls back to rule-based heuristics if the LLM response is unparseable.
@@ -284,7 +282,7 @@ class AFLIntentClassifier:
         r"\bjoke\b", r"\btennis\b", r"\bbasketball\b", r"\bscrum\b",
     ]
 
-    def __init__(self, prompt_version: int = 2, model: str = "gemini-2.0-flash"):
+    def __init__(self, prompt_version: int = 2, model: str = "grok-2-latest"):
         self._api_key = _get_api_key()
         self._model = model
         self._prompt_template = _ROUTER_PROMPT_V2 if prompt_version == 2 else _ROUTER_PROMPT_V1
@@ -400,13 +398,20 @@ class AFLIntentClassifier:
         """
         prompt = self._prompt_template.format(query=query)
         try:
-            client = genai.Client(api_key=self._api_key)
-            response = client.models.generate_content(
-                model=self._model,
-                contents=prompt,
-                config={"temperature": 0.0},
+            client = openai.OpenAI(
+                api_key=self._api_key,
+                base_url="https://api.x.ai/v1",
             )
-            raw = response.text.strip()
+            
+            response = client.chat.completions.create(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": "You are a structured JSON classifier."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0
+            )
+            raw = response.choices[0].message.content.strip()
 
             # Strip markdown fences if present
             raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)

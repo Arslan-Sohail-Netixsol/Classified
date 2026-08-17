@@ -205,7 +205,7 @@ def build_pdf(filename: str = "executive_report.pdf"):
         ],
         [
             Paragraph("<b>Dual-Tier Router</b>", tbl_cell_bold),
-            Paragraph("Gemini 2.0 Flash LLM router backed by instantaneous deterministic regex fallback heuristics.", tbl_cell),
+            Paragraph("Grok LLM router backed by instantaneous deterministic regex fallback heuristics.", tbl_cell),
             Paragraph("100% routing continuity under upstream rate limits / 429 errors.", tbl_cell)
         ],
         [
@@ -445,7 +445,7 @@ def build_pdf(filename: str = "executive_report.pdf"):
     story.append(Paragraph("6. Stakeholder Recommendations & Expansion Roadmap", h1_style))
     story.append(Paragraph("• <b>Sub-Query Splitting for Multi-Hop Inquiries:</b> Implement an explicit decomposition node in LangGraph to seamlessly answer combined queries (e.g., <i>'Show last week stats AND predict next week'</i>).", bullet_style))
     story.append(Paragraph("• <b>Live Odds Integration & EV Betting Analysis:</b> Connect licensed odds API feeds to contrast model probabilities against implied bookmaker odds for expected-value (EV) sports insights.", bullet_style))
-    story.append(Paragraph("• <b>Edge-Cached Semantic Vector Store:</b> Deploy ChromaDB/FAISS vector retrieval for 100+ historical AFL rule edge cases to reduce Gemini LLM dependency to < 10% of total query volume.", bullet_style))
+    story.append(Paragraph("• <b>Edge-Cached Semantic Vector Store:</b> Deploy ChromaDB/FAISS vector retrieval for 100+ historical AFL rule edge cases to reduce Grok LLM dependency to < 10% of total query volume.", bullet_style))
     story.append(Spacer(1, 6))
 
     # Sign-off Box

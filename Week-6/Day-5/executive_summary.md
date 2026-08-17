@@ -19,10 +19,10 @@ The system was evaluated against a 25+ case comprehensive test suite:
 
 ## 4. Known Limitations
 - **Data Recency**: The current models are trained on data up to the 2025 season. Unseen rookies or major team roster overhauls in 2026 are not fully captured until the next retraining cycle.
-- **Rate Limiting**: The system relies on the Gemini API free tier. During bursts of traffic, the system falls back to a regex router which is less semantically accurate (e.g., misclassifying "How many players?" as a database retrieval).
+- **Rate Limiting**: The system relies on the Grok API. During bursts of traffic, the system falls back to a regex router which is less semantically accurate (e.g., misclassifying "How many players?" as a database retrieval).
 - **Nuanced Queries**: Extremely complex multi-hop queries (e.g., "Which team that won the premiership also had the highest average CPI in finals?") currently exceed the standard tool interfaces.
 
 ## 5. Recommended Next Steps
-1. **Upgrade Infrastructure**: Transition from the Gemini free tier to a provisioned throughput tier to eliminate `429 RESOURCE_EXHAUSTED` errors and remove reliance on the brittle regex fallback.
+1. **Upgrade Infrastructure**: Transition from the Grok free tier to a provisioned throughput tier to eliminate `429 RESOURCE_EXHAUSTED` errors and remove reliance on the brittle regex fallback.
 2. **Automated Weekly Retraining Loop**: Implement the proposed Datadog-monitored weekly data pipeline to ingest weekend match results and automatically retrain models on Tuesday nights to combat concept drift.
 3. **Advanced RAG integration**: Ingest AFL rulebooks and coaching manuals into a vector store to allow the `DirectAnswerNode` to answer deep tactical questions with specific rule citations.

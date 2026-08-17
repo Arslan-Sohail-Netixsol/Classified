@@ -83,7 +83,7 @@ streamlit run ui.py
 ```
 
 ### Key Capabilities
-1. **Dual-Tier Intent Routing:** Gemini LLM router backed by instantaneous regex heuristics ensuring 100% routing continuity under upstream rate limits.
+1. **Dual-Tier Intent Routing:** Grok LLM router backed by instantaneous regex heuristics ensuring 100% routing continuity under upstream rate limits.
 2. **Predictive Statistical Grounding:** Calibrated `LogisticRegression` for match forecasting and `Ridge` regression for Composite Performance Index (CPI), disposals, and goals.
 3. **Multi-Layer Guardrails:** Traps prompt injections, roleplay jailbreaks, and cross-sport inquiries.
 4. **Resilient Self-Correction:** Detects unknown teams and invalid season years, prompting the user for targeted clarifications.
